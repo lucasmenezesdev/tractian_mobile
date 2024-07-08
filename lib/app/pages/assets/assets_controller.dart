@@ -38,11 +38,13 @@ class AssetsController extends GetxController {
     if (filterSelected.value == index) {
       filterSelected.value = null;
     } else {
+      searchController.clear();
       filterSelected.value = index;
     }
     _filterAssets();
   }
 
+  // Verify if search query is empty and apply the correct filter
   void _filterAssets() {
     List<dynamic> assets = [...?company?.locations, ...?company?.assets];
     String searchQuery = searchController.text.toLowerCase();
@@ -50,14 +52,16 @@ class AssetsController extends GetxController {
     if (searchQuery.isEmpty) {
       filteredAssets.value = _applyFilterOnly(assets);
     } else {
-      filteredAssets.value = _filterAndBuildTree(assets, searchQuery);
+      filteredAssets.value = _applySearchFilter(assets, searchQuery);
     }
   }
 
+  // Filter the assets based on the selected filter (Energy Sensor or Critical Status)
   List<dynamic> _applyFilterOnly(List<dynamic> items) {
     List<dynamic> filteredItems = [];
 
     for (var item in items) {
+      // Filter for locations
       if (item is LocationModel) {
         var filteredChildren = _applyFilterOnly(item.children);
         var filteredAssets = _applyFilterOnly(item.assets);
@@ -70,6 +74,7 @@ class AssetsController extends GetxController {
             name: item.name,
             parentId: item.parentId,
           );
+          // Add the filtered children and assets to the new item, casting them to the correct type
           newItem.children = filteredChildren.cast<LocationModel>();
           newItem.assets = filteredAssets.cast<AssetModel>();
           filteredItems.add(newItem);
@@ -107,7 +112,8 @@ class AssetsController extends GetxController {
     return filteredItems;
   }
 
-  List<dynamic> _filterAndBuildTree(List<dynamic> items, String searchQuery) {
+  // Filter the assets based only on the search query
+  List<dynamic> _applySearchFilter(List<dynamic> items, String searchQuery) {
     if (filterSelected.value != null) {
       filterSelected.value = null;
     }
@@ -116,8 +122,8 @@ class AssetsController extends GetxController {
 
     for (var item in items) {
       if (item is LocationModel) {
-        var filteredChildren = _filterAndBuildTree(item.children, searchQuery);
-        var filteredAssets = _filterAndBuildTree(item.assets, searchQuery);
+        var filteredChildren = _applySearchFilter(item.children, searchQuery);
+        var filteredAssets = _applySearchFilter(item.assets, searchQuery);
 
         if (item.name.toLowerCase().contains(searchQuery) ||
             filteredChildren.isNotEmpty ||
@@ -132,7 +138,7 @@ class AssetsController extends GetxController {
           filteredItems.add(newItem);
         }
       } else if (item is AssetModel && item is! ComponentModel) {
-        var filteredChildren = _filterAndBuildTree(item.children, searchQuery);
+        var filteredChildren = _applySearchFilter(item.children, searchQuery);
 
         if (item.name.toLowerCase().contains(searchQuery) ||
             filteredChildren.isNotEmpty) {
@@ -165,6 +171,7 @@ class AssetsController extends GetxController {
     return filteredItems;
   }
 
+  // Checks which filter is selected and calls the appropriate recursive function for the object type
   bool _matchesFilter(dynamic item) {
     if (filterSelected.value == null) return true;
 
@@ -177,6 +184,7 @@ class AssetsController extends GetxController {
     return false;
   }
 
+  // Recursive function to check if the item has an energy sensor
   bool _hasEnergySensor(dynamic item) {
     if (item is ComponentModel && item.sensorType == SensorType.energy) {
       return true;
@@ -188,6 +196,7 @@ class AssetsController extends GetxController {
     return false;
   }
 
+  // Recursive function to check if the item has a critical status
   bool _hasCriticalStatus(dynamic item) {
     if (item is ComponentModel && item.status == ComponentStatus.alert) {
       return true;
